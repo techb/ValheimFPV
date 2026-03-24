@@ -1,0 +1,128 @@
+name: Build and Release
+
+# Triggers on any push or merged PR to the release branch
+on:
+  push:
+    branches: [ release ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Source ────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'   # builds net462 targets via reference assemblies
+
+      # ── 2. Dependency DLLs (cached) ──────────────────────────────────────────
+      # Cache key includes the BepInEx version string so the cache is invalidated
+      # when we bump BepInEx. Valheim DLLs are re-fetched if the cache misses.
+      - name: Cache dependency DLLs
+        id: cache-libs
+        uses: actions/cache@v4
+        with:
+          path: dep-libs
+          key: dep-libs-bepinex-5.4.22
+
+      - name: Install SteamCMD
+        if: steps.cache-libs.outputs.cache-hit != 'true'
+        run: |
+          sudo add-apt-repository multiverse
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          sudo apt-get install -y lib32gcc-s1 steamcmd
+
+      - name: Download Valheim Dedicated Server (free, anonymous)
+        if: steps.cache-libs.outputs.cache-hit != 'true'
+        run: |
+          # App 896660 = Valheim Dedicated Server — free, no Steam account required
+          steamcmd \
+            +login anonymous \
+            +force_install_dir ${{ github.workspace }}/valheim-server \
+            +app_update 896660 validate \
+            +quit
+
+          mkdir -p dep-libs
+          MANAGED=${{ github.workspace }}/valheim-server/valheim_server_Data/Managed
+
+          cp "$MANAGED/assembly_valheim.dll"           dep-libs/
+          cp "$MANAGED/UnityEngine.dll"                dep-libs/ 2>/dev/null || true
+          cp "$MANAGED/UnityEngine.CoreModule.dll"     dep-libs/ 2>/dev/null || true
+          cp "$MANAGED/UnityEngine.PhysicsModule.dll"  dep-libs/ 2>/dev/null || true
+          cp "$MANAGED/UnityEngine.InputLegacyModule.dll" dep-libs/ 2>/dev/null || true
+          cp "$MANAGED/UnityEngine.IMGUIModule.dll"    dep-libs/ 2>/dev/null || true
+          cp "$MANAGED/UnityEngine.TextRenderingModule.dll" dep-libs/ 2>/dev/null || true
+          cp "$MANAGED/UnityEngine.AudioModule.dll"    dep-libs/ 2>/dev/null || true
+
+      - name: Download BepInEx 5.4.22
+        if: steps.cache-libs.outputs.cache-hit != 'true'
+        run: |
+          curl -sL -o bepinex.zip \
+            "https://github.com/BepInEx/BepInEx/releases/download/v5.4.22.0/BepInEx_win_x64_5.4.22.0.zip"
+          unzip -q bepinex.zip -d bepinex-extracted
+          cp bepinex-extracted/BepInEx/core/BepInEx.dll dep-libs/
+          cp bepinex-extracted/BepInEx/core/0Harmony.dll dep-libs/
+
+      # ── 3. Populate libs/ and build ──────────────────────────────────────────
+      - name: Populate libs folder
+        run: |
+          mkdir -p ValheimFPVDrone/ValheimFPVDrone/libs
+          cp dep-libs/*.dll ValheimFPVDrone/ValheimFPVDrone/libs/
+          echo "DLLs in libs/:"
+          ls ValheimFPVDrone/ValheimFPVDrone/libs/
+
+      - name: Build Release
+        run: |
+          dotnet build ValheimFPVDrone/ValheimFPVDrone/ValheimFPVDrone.csproj \
+            -c Release \
+            --nologo
+
+      # ── 4. Extract version from source ───────────────────────────────────────
+      - name: Get version from Plugin.cs
+        id: version
+        run: |
+          VERSION=$(grep -oP 'PluginVersion\s*=\s*"\K[^"]+' \
+            ValheimFPVDrone/ValheimFPVDrone/Plugin.cs)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Detected version: ${VERSION}"
+
+      # ── 5. Package ────────────────────────────────────────────────────────────
+      - name: Create release zip
+        run: |
+          mkdir -p dist
+          cp ValheimFPVDrone/ValheimFPVDrone/bin/Release/net462/ValheimFPVDrone.dll dist/
+          cp manifest.json dist/
+          cp README.md dist/
+          cd dist
+          zip ValheimFPVDrone-v${{ steps.version.outputs.version }}.zip \
+            ValheimFPVDrone.dll manifest.json README.md
+          echo "Release contents:"
+          unzip -l ValheimFPVDrone-v${{ steps.version.outputs.version }}.zip
+
+      # ── 6. Publish GitHub Release ─────────────────────────────────────────────
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: ValheimFPVDrone v${{ steps.version.outputs.version }}
+          prerelease: true
+          make_latest: true
+          body: |
+            Automated build from the `release` branch.
+
+            > **Work In Progress** — expect bugs.
+
+            ### Installation
+            1. Install [BepInEx 5.4.x for Valheim](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/)
+            2. Extract `ValheimFPVDrone.dll` into `Valheim/BepInEx/plugins/ValheimFPVDrone/`
+            3. Launch Valheim — press **F8** to spawn the drone, **F7** to calibrate your controller
+
+            See README.md for full documentation.
+          files: dist/ValheimFPVDrone-v${{ steps.version.outputs.version }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
