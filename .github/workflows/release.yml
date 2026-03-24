@@ -83,14 +83,14 @@ jobs:
       # ── 3. Populate libs/ and build ──────────────────────────────────────────
       - name: Populate libs folder
         run: |
-          mkdir -p ValheimFPVDrone/ValheimFPVDrone/libs
-          cp dep-libs/*.dll ValheimFPVDrone/ValheimFPVDrone/libs/
+          mkdir -p ValheimFPVDrone/libs
+          cp dep-libs/*.dll ValheimFPVDrone/libs/
           echo "DLLs in libs/:"
-          ls ValheimFPVDrone/ValheimFPVDrone/libs/
+          ls ValheimFPVDrone/libs/
 
       - name: Build Release
         run: |
-          dotnet build ValheimFPVDrone/ValheimFPVDrone/ValheimFPVDrone.csproj \
+          dotnet build ValheimFPVDrone/ValheimFPVDrone.csproj \
             -c Release \
             --nologo
 
@@ -99,7 +99,7 @@ jobs:
         id: version
         run: |
           VERSION=$(grep -oP 'PluginVersion\s*=\s*"\K[^"]+' \
-            ValheimFPVDrone/ValheimFPVDrone/Plugin.cs)
+            ValheimFPVDrone/Plugin.cs)
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Detected version: ${VERSION}"
 
@@ -107,7 +107,7 @@ jobs:
       - name: Create release zip
         run: |
           mkdir -p dist
-          cp ValheimFPVDrone/ValheimFPVDrone/bin/Release/net462/ValheimFPVDrone.dll dist/
+          cp ValheimFPVDrone/bin/Release/net462/ValheimFPVDrone.dll dist/
           cp manifest.json dist/
           cp README.md dist/
           cd dist
