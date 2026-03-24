@@ -1,0 +1,9 @@
+{
+    "name": "ValheimFPVDrone",
+    "version_number": "1.0.0",
+    "website_url": "",
+    "description": "Fly around the Valheim world as an FPV drone in acro mode. Supports RadioMaster and other USB RC controllers. Full Betaflight-style rate configuration.",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.2202"
+    ]
+}

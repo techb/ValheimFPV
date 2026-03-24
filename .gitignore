@@ -1,0 +1,20 @@
+# Build output
+bin/
+obj/
+
+# Valheim / BepInEx DLLs — copy these from your local installation, do not commit
+ValheimFPVDrone/libs/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+
+# OS
+Thumbs.db
+desktop.ini

@@ -1,0 +1,100 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <AssemblyName>ValheimFPVDrone</AssemblyName>
+    <RootNamespace>ValheimFPVDrone</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    
+    <!--
+      Set this to your Valheim install path.
+      Example: C:\Program Files (x86)\Steam\steamapps\common\Valheim
+    -->
+    <ValheimInstall>$(VALHEIM_INSTALL)</ValheimInstall>
+    <BepInExPath>$(ValheimInstall)\BepInEx</BepInExPath>
+  </PropertyGroup>
+
+  <!--
+    REFERENCES:
+    You need to add references to the following DLLs from your Valheim installation.
+    Set the VALHEIM_INSTALL environment variable or edit the paths below.
+    
+    Required DLLs (copy to a 'libs' folder next to this .csproj, or reference directly):
+      - From Valheim\BepInEx\core\:
+          BepInEx.dll
+          0Harmony.dll
+      - From Valheim\valheim_Data\Managed\:
+          assembly_valheim.dll  (or publicized version)
+      - From Valheim\unstripped_corlib\ (or valheim_Data\Managed\):
+          UnityEngine.dll
+          UnityEngine.CoreModule.dll
+          UnityEngine.PhysicsModule.dll
+          UnityEngine.InputLegacyModule.dll
+          UnityEngine.IMGUIModule.dll
+          UnityEngine.TextRenderingModule.dll
+          UnityEngine.AudioModule.dll
+  -->
+
+  <!-- BepInEx references -->
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>libs\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>libs\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Valheim game assembly -->
+  <ItemGroup>
+    <Reference Include="assembly_valheim">
+      <HintPath>libs\assembly_valheim.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Unity Engine references -->
+  <ItemGroup>
+    <Reference Include="UnityEngine">
+      <HintPath>libs\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>libs\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>libs\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>libs\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>libs\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>libs\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>libs\UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="libs\" />
+  </ItemGroup>
+
+  <!-- Post-build: copy to BepInEx plugins folder -->
+  <Target Name="CopyToPlugins" AfterTargets="Build" Condition="Exists('$(BepInExPath)')">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(BepInExPath)\plugins\ValheimFPVDrone\" />
+    <Message Text="Copied $(TargetFileName) to $(BepInExPath)\plugins\ValheimFPVDrone\" Importance="high" />
+  </Target>
+
+</Project>
