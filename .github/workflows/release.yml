@@ -20,14 +20,17 @@ jobs:
           dotnet-version: '8.0.x'   # builds net462 targets via reference assemblies
 
       # ── 2. Dependency DLLs (cached) ──────────────────────────────────────────
-      # Cache key includes the BepInEx version string so the cache is invalidated
-      # when we bump BepInEx. Valheim DLLs are re-fetched if the cache misses.
+      # Cache refreshes monthly so Valheim and BepInEx updates are picked up.
+      - name: Get current month for cache key
+        id: date
+        run: echo "month=$(date +'%Y-%m')" >> $GITHUB_OUTPUT
+
       - name: Cache dependency DLLs
         id: cache-libs
         uses: actions/cache@v4
         with:
           path: dep-libs
-          key: dep-libs-bepinex-5.4.22
+          key: dep-libs-${{ runner.os }}-${{ steps.date.outputs.month }}
 
       - name: Install SteamCMD
         if: steps.cache-libs.outputs.cache-hit != 'true'
@@ -60,11 +63,16 @@ jobs:
           cp "$MANAGED/UnityEngine.TextRenderingModule.dll" dep-libs/ 2>/dev/null || true
           cp "$MANAGED/UnityEngine.AudioModule.dll"    dep-libs/ 2>/dev/null || true
 
-      - name: Download BepInEx 5.4.22
+      - name: Download BepInEx 5.x (latest)
         if: steps.cache-libs.outputs.cache-hit != 'true'
         run: |
-          curl -sL -o bepinex.zip \
-            "https://github.com/BepInEx/BepInEx/releases/download/v5.4.22.0/BepInEx_win_x64_5.4.22.0.zip"
+          # Resolve the latest BepInEx 5.x win_x64 zip URL via GitHub API
+          BEPINEX_URL=$(curl -sL "https://api.github.com/repos/BepInEx/BepInEx/releases" \
+            | jq -r '[.[] | select(.tag_name | startswith("v5."))][0].assets[]
+                      | select(.name | test("win_x64.*\\.zip$"))
+                      | .browser_download_url')
+          echo "BepInEx URL: $BEPINEX_URL"
+          curl -sL -o bepinex.zip "$BEPINEX_URL"
           unzip -q bepinex.zip -d bepinex-extracted
           cp bepinex-extracted/BepInEx/core/BepInEx.dll dep-libs/
           cp bepinex-extracted/BepInEx/core/0Harmony.dll dep-libs/
