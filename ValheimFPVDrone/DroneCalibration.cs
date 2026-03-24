@@ -84,13 +84,13 @@ namespace ValheimFPVDrone
             }
             else if (_step == WizardStep.Done)
             {
-                // Done: ENTER or SPACE saves, ESC discards
+                // Calibration already saved — Done screen is summary only. Any key closes it.
                 if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)
-                    || Input.GetKeyDown(KeyCode.Space))
-                    CommitCalibration();
-
-                if (Input.GetKeyDown(KeyCode.Escape))
+                    || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Escape))
+                {
                     _step = WizardStep.None;
+                    IsOpen = false;
+                }
             }
             else
             {
@@ -125,7 +125,11 @@ namespace ValheimFPVDrone
                 case WizardStep.Throttle: _wThrottle = best; BeginWizardStep(WizardStep.Roll);  break;
                 case WizardStep.Roll:     _wRoll     = best; BeginWizardStep(WizardStep.Pitch); break;
                 case WizardStep.Pitch:    _wPitch    = best; BeginWizardStep(WizardStep.Yaw);   break;
-                case WizardStep.Yaw:      _wYaw      = best; _step = WizardStep.Done;           break;
+                case WizardStep.Yaw:
+                    _wYaw = best;
+                    CommitCalibration(); // auto-save immediately — no extra confirm step needed
+                    _step = WizardStep.Done;
+                    break;
             }
         }
 
@@ -153,11 +157,19 @@ namespace ValheimFPVDrone
             float observedMin = _rangeMin[_wThrottle];
             Plugin.ThrottleRangeMin.Value = observedMin < -0.5f ? -1f : 0f;
 
-            Plugin.Instance.Config.Save();
-            Plugin.Log.LogInfo(
-                $"[FPVDrone] Calibration saved — T=Axis{_wThrottle}  R=Axis{_wRoll}" +
-                $"  P=Axis{_wPitch}  Y=Axis{_wYaw}  ThrottleRangeMin={Plugin.ThrottleRangeMin.Value}");
-            _step = WizardStep.None;
+            try
+            {
+                Plugin.Instance.Config.Save();
+                Plugin.Log.LogInfo(
+                    $"[FPVDrone] Calibration saved to: {Plugin.Instance.Config.ConfigFilePath}");
+                Plugin.Log.LogInfo(
+                    $"[FPVDrone] Values written — T=Axis{_wThrottle}  R=Axis{_wRoll}" +
+                    $"  P=Axis{_wPitch}  Y=Axis{_wYaw}  ThrottleRangeMin={Plugin.ThrottleRangeMin.Value}");
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Log.LogError($"[FPVDrone] Config.Save() FAILED: {ex.Message}");
+            }
         }
 
         // ── GUI ───────────────────────────────────────────────────────────────────
@@ -284,10 +296,10 @@ namespace ValheimFPVDrone
                 _styleSmall); cy += rowH + 8;
 
             DrawLabel(px + pad, cy, pw - pad * 2, lineH,
-                "[ENTER / SPACE] Save & apply     [ESC] Discard", _styleWarn);
+                "SAVED to config — will persist across restarts.", _styleWarn);
             cy += lineH;
             DrawLabel(px + pad, cy, pw - pad * 2, lineH,
-                "Tip: if a stick is reversed, toggle its Invert setting in the config (F1).",
+                "[ANY KEY] Close     Tip: if a stick is reversed, use Invert settings in F1.",
                 _styleSmall);
         }
 

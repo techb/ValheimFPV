@@ -156,7 +156,7 @@ namespace ValheimFPVDrone
             bool foundGround = false;
 
             RaycastHit hit;
-            if (Physics.Raycast(pos + Vector3.up * 5f, Vector3.down, out hit, 500f))
+            if (Physics.Raycast(pos + Vector3.up * 5f, Vector3.down, out hit, 500f, _terrainMask))
             {
                 groundHeight = hit.point.y;
                 foundGround = true;
@@ -171,11 +171,8 @@ namespace ValheimFPVDrone
 
                 if (_velocity.y < 0f)
                 {
-                    // Impact — kill downward velocity
                     float impactSpeed = Mathf.Abs(_velocity.y);
                     _velocity.y = 0f;
-
-                    // Hard crash: if hitting ground fast, reduce all velocity
                     if (impactSpeed > 5f)
                     {
                         _velocity *= 0.3f;
@@ -189,19 +186,56 @@ namespace ValheimFPVDrone
                 }
             }
 
-            // Also check for obstacles with a sphere cast
-            RaycastHit obstacleHit;
-            if (Physics.SphereCast(pos, 0.3f, _velocity.normalized, out obstacleHit, _velocity.magnitude * Time.fixedDeltaTime + 0.5f))
+            // ── Obstacle collision (solid world geometry + player-built structures) ──
+            if (!Plugin.ObstacleCollision.Value) return;
+
+            // OverlapSphere + ClosestPoint: finds exact separation from each nearby collider.
+            // _solidMask targets static_solid (rocks, boulders, tree trunks) and piece (player builds).
+            // Foliage, canopy, characters, water and triggers are excluded by the mask.
+            const float droneRadius = 0.3f;
+            int nearbyCount = Physics.OverlapSphereNonAlloc(pos, droneRadius, _overlapBuffer, _solidMask);
+            for (int i = 0; i < nearbyCount; i++)
             {
-                if (obstacleHit.distance < 0.3f)
+                Collider col = _overlapBuffer[i];
+                if (col == null) continue;
+
+                Vector3 closest = col.ClosestPoint(pos);
+                Vector3 away = pos - closest;
+                float dist = away.magnitude;
+
+                // dist == 0: deep inside a non-convex mesh — skip
+                if (dist < 0.001f) continue;
+
+                away /= dist;
+
+                float overlap = droneRadius - dist;
+                if (overlap > 0f)
                 {
-                    // Bounce off obstacle
-                    Vector3 normal = obstacleHit.normal;
-                    _velocity = Vector3.Reflect(_velocity, normal) * 0.3f; // heavy speed loss on collision
-                    _transform.position = obstacleHit.point + normal * 0.35f;
+                    pos += away * (overlap + 0.02f);
+                    _transform.position = pos;
+                }
+
+                float into = Vector3.Dot(_velocity, -away);
+                if (into > 0f)
+                {
+                    _velocity += away * into;
+                    _velocity *= 0.5f;
+                    _angularVelocity *= 0.3f;
                 }
             }
         }
+
+        // Terrain-only mask for ground raycasting — only hits the terrain mesh, not rocks/trees/foliage.
+        private static readonly int _terrainMask =
+            LayerMask.GetMask("terrain");
+
+        // Solid-world mask for obstacle collision — rocks, boulders, tree trunks (static_solid)
+        // and player-built structures (piece). Excludes foliage, canopy, characters, triggers, etc.
+        private static readonly int _solidMask =
+            LayerMask.GetMask("static_solid", "piece");
+
+        // Pre-allocated buffer — avoids GC allocation every frame
+        private static readonly Collider[] _overlapBuffer = new Collider[16];
 
         /// <summary>
         /// Get the angle between drone's up vector and world up.

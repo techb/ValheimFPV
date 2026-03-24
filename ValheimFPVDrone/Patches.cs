@@ -99,6 +99,17 @@ namespace ValheimFPVDrone
         }
     }
 
+    [HarmonyPatch(typeof(Character), "Damage")]
+    public static class Character_Damage_Patch
+    {
+        static bool Prefix(Character __instance)
+        {
+            Player player = __instance as Player;
+            if (player == null || player != Player.m_localPlayer) return true;
+            return !(DroneController.Instance != null && DroneController.Instance.IsFlying);
+        }
+    }
+
     [HarmonyPatch(typeof(Character), "Jump")]
     public static class Character_Jump_Patch
     {
@@ -110,18 +121,17 @@ namespace ValheimFPVDrone
         }
     }
 
-    // ── Block game pause menu interfering with drone controls ──
+    // ── Override camera transform after GameCamera.LateUpdate runs ──
+    // We use Postfix (not Prefix skip) so that LateUpdate's side-effects still run:
+    // grass streaming, fog parameters, depth of field, post-processing, etc.
+    // After it runs we assert the drone position/FOV over whatever the game set.
     [HarmonyPatch(typeof(GameCamera), "LateUpdate")]
     public static class GameCamera_LateUpdate_Patch
     {
-        static bool Prefix()
+        static void Postfix()
         {
-            // When flying, skip the game camera update entirely
-            if (DroneController.Instance != null && DroneController.Instance.IsFlying)
-            {
-                return false;
-            }
-            return true;
+            if (DroneController.Instance == null || !DroneController.Instance.IsFlying) return;
+            DroneController.Instance.ApplyFPVCameraOverrides();
         }
     }
 

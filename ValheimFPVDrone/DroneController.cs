@@ -29,6 +29,11 @@ namespace ValheimFPVDrone
         private Vector3 _playerPosition;
         private Quaternion _playerRotation;
 
+        // Player ghost state (hidden + no collision while flying)
+        private Renderer[] _playerRenderers;
+        private CharacterController _playerCC;
+        private Collider[] _playerColliders;
+
         // Fixed timestep accumulator for physics
         private float _physicsAccumulator = 0f;
         private const float PHYSICS_DT = 0.005f; // 200Hz physics for smooth flight
@@ -77,12 +82,14 @@ namespace ValheimFPVDrone
             // Terrain collision at frame rate is fine
             _physics.HandleTerrainCollision();
 
-            // Update FPV camera
-            UpdateFPVCamera();
+            // Reveal map at drone position (mirrors what Player calls each frame)
+            ExploreMap(_droneObject.transform.position);
 
             // Keep player frozen
             FreezePlayer();
         }
+
+        private bool _warnShown = false;
 
         private void EnterDrone()
         {
@@ -95,6 +102,14 @@ namespace ValheimFPVDrone
 
             Plugin.Log.LogInfo("Entering FPV drone mode!");
 
+            if (!_warnShown)
+            {
+                _warnShown = true;
+                if (MessageHud.instance != null)
+                    MessageHud.instance.ShowMessage(MessageHud.MessageType.Center,
+                        $"FPV Drone v{Plugin.PluginVersion} — Work In Progress. Expect bugs!");
+            }
+
             // Save player state
             _playerPosition = player.transform.position;
             _playerRotation = player.transform.rotation;
@@ -106,6 +121,9 @@ namespace ValheimFPVDrone
 
             // Add physics component
             _physics = _droneObject.AddComponent<DronePhysics>();
+
+            // Ghost the player: invisible, invincible, no collision
+            GhostPlayer(player);
 
             // Create FPV camera
             CreateFPVCamera();
@@ -180,22 +198,47 @@ namespace ValheimFPVDrone
             // preserved automatically.
         }
 
-        private void UpdateFPVCamera()
+        /// <summary>
+        /// Called by GameCamera_LateUpdate_Patch Postfix — re-asserts drone position,
+        /// rotation, and FOV after Valheim's LateUpdate resets them to the player.
+        /// Running as Postfix (not Prefix skip) ensures all LateUpdate side-effects
+        /// (grass streaming, fog, particles, DOF) still execute each frame.
+        /// </summary>
+        public void ApplyFPVCameraOverrides()
         {
             if (_fpvCamera == null || _droneObject == null) return;
 
-            // Camera is attached to drone with configurable uptilt
-            _fpvCamera.transform.position = _droneObject.transform.position;
-
-            // FPV camera looks forward with an uptilt angle
-            // Uptilt means the camera is tilted up from the drone's forward axis
-            // so when the drone pitches forward for speed, the camera still sees ahead
             float tilt = Plugin.CameraTiltAngle.Value;
+            _fpvCamera.transform.position = _droneObject.transform.position;
             _fpvCamera.transform.rotation = _droneObject.transform.rotation *
                 Quaternion.Euler(-tilt, 0f, 0f);
+            _fpvCamera.fieldOfView   = Plugin.CameraFOV.Value;
+            _fpvCamera.nearClipPlane = 0.05f;
+        }
 
-            // Update FOV in case config changed
-            _fpvCamera.fieldOfView = Plugin.CameraFOV.Value;
+        // Cached reflection info for Minimap.Explore (not exposed in publicized DLL)
+        private static System.Reflection.MethodInfo _minimapExplore;
+        private static bool _minimapExploreSearched;
+
+        private void ExploreMap(Vector3 pos)
+        {
+            if (Minimap.instance == null) return;
+
+            if (!_minimapExploreSearched)
+            {
+                _minimapExploreSearched = true;
+                _minimapExplore = typeof(Minimap).GetMethod("Explore",
+                    System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.Public |
+                    System.Reflection.BindingFlags.NonPublic,
+                    null,
+                    new[] { typeof(Vector3), typeof(float) },
+                    null);
+                if (_minimapExplore == null)
+                    Plugin.Log.LogWarning("[FPVDrone] Minimap.Explore not found — map reveal disabled.");
+            }
+
+            _minimapExplore?.Invoke(Minimap.instance, new object[] { pos, 100f });
         }
 
         private void SwitchToFPVCamera()
@@ -234,17 +277,42 @@ namespace ValheimFPVDrone
         private void FreezePlayer()
         {
             Player player = Player.m_localPlayer;
-            if (player == null) return;
+            if (player == null || _droneObject == null) return;
 
-            // Keep player at saved position to prevent falling etc.
-            player.transform.position = _playerPosition;
+            // Follow drone horizontally so Valheim's ZoneSystem loads chunks under
+            // the drone, but keep the player at their original Y (ground level) to
+            // avoid collision with the drone which is flying above them.
+            Vector3 followPos = new Vector3(
+                _droneObject.transform.position.x,
+                _playerPosition.y,
+                _droneObject.transform.position.z);
+            player.transform.position = followPos;
 
-            // Disable player character movement
-            // We'll handle this more elegantly through Harmony patches,
-            // but as a fallback, zero out the character velocity
-            var character = player.GetComponent<Character>();
-            if (character != null)
+            try
             {
+                var body = player.GetComponent<Rigidbody>();
+                if (body != null)
+                {
+                    body.velocity = Vector3.zero;
+                    body.angularVelocity = Vector3.zero;
+                }
+            }
+            catch { }
+        }
+
+        private void UnfreezePlayer()
+        {
+            Player player = Player.m_localPlayer;
+            if (player != null)
+            {
+                player.transform.position = _playerPosition;
+
+                // Reset Valheim's fall-damage tracker so the game doesn't see the
+                // teleport as a fall from whatever altitude it last recorded.
+                ResetFallState(player);
+
+                // Zero out any residual velocity so the CharacterController doesn't
+                // launch the player when it's re-enabled.
                 try
                 {
                     var body = player.GetComponent<Rigidbody>();
@@ -256,12 +324,69 @@ namespace ValheimFPVDrone
                 }
                 catch { }
             }
+
+            RestorePlayer(player);
         }
 
-        private void UnfreezePlayer()
+        // Cached reflection info for Character.m_maxAirAltitude
+        private static System.Reflection.FieldInfo _maxAirAltitudeField;
+        private static bool _maxAirAltitudeSearched;
+
+        private static void ResetFallState(Character character)
         {
-            // Player will resume normal control once IsFlying = false
-            // The Harmony patches check IsFlying to block input
+            if (!_maxAirAltitudeSearched)
+            {
+                _maxAirAltitudeSearched = true;
+                _maxAirAltitudeField = typeof(Character).GetField("m_maxAirAltitude",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (_maxAirAltitudeField == null)
+                    Plugin.Log.LogWarning("[FPVDrone] m_maxAirAltitude field not found — fall damage reset unavailable.");
+            }
+
+            if (_maxAirAltitudeField != null)
+                _maxAirAltitudeField.SetValue(character, character.transform.position.y);
+        }
+
+        private void GhostPlayer(Player player)
+        {
+            // Hide all renderers
+            _playerRenderers = player.GetComponentsInChildren<Renderer>(false);
+            foreach (var r in _playerRenderers)
+                r.enabled = false;
+
+            // Disable CharacterController so the player clips through terrain
+            _playerCC = player.GetComponent<CharacterController>();
+            if (_playerCC != null) _playerCC.enabled = false;
+
+            // Disable all colliders so nothing can push or block the player
+            _playerColliders = player.GetComponentsInChildren<Collider>(false);
+            foreach (var c in _playerColliders)
+                c.enabled = false;
+        }
+
+        private void RestorePlayer(Player player)
+        {
+            if (player == null) return;
+
+            if (_playerRenderers != null)
+            {
+                foreach (var r in _playerRenderers)
+                    if (r != null) r.enabled = true;
+                _playerRenderers = null;
+            }
+
+            if (_playerCC != null)
+            {
+                _playerCC.enabled = true;
+                _playerCC = null;
+            }
+
+            if (_playerColliders != null)
+            {
+                foreach (var c in _playerColliders)
+                    if (c != null) c.enabled = true;
+                _playerColliders = null;
+            }
         }
 
         private void OnDestroy()

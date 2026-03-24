@@ -28,9 +28,9 @@ namespace ValheimFPVDrone
         public static ConfigEntry<float> RollRate;
         public static ConfigEntry<float> PitchRate;
         public static ConfigEntry<float> YawRate;
-        public static ConfigEntry<float> RollSuperRate;
-        public static ConfigEntry<float> PitchSuperRate;
-        public static ConfigEntry<float> YawSuperRate;
+        public static ConfigEntry<float> RollRCExpo;
+        public static ConfigEntry<float> PitchRCExpo;
+        public static ConfigEntry<float> YawRCExpo;
         public static ConfigEntry<float> RollRCRate;
         public static ConfigEntry<float> PitchRCRate;
         public static ConfigEntry<float> YawRCRate;
@@ -42,6 +42,7 @@ namespace ValheimFPVDrone
         public static ConfigEntry<float> DragCoefficient;
         public static ConfigEntry<float> AngularDragCoefficient;
         public static ConfigEntry<float> MotorSpinUpTime;
+        public static ConfigEntry<bool> ObstacleCollision;
 
         // ── Speed / limits ──
         public static ConfigEntry<float> MaxSpeed;
@@ -80,6 +81,12 @@ namespace ValheimFPVDrone
             _harmony.PatchAll(Assembly.GetExecutingAssembly());
 
             Log.LogInfo($"{PluginName} v{PluginVersion} loaded!");
+            Log.LogWarning("=============================================================");
+            Log.LogWarning($"  {PluginName} — WORK IN PROGRESS");
+            Log.LogWarning("  Expect bugs, crashes, and missing features.");
+            Log.LogWarning("  Report issues at the project repo.");
+            Log.LogInfo($"[FPVDrone] Config file: {Config.ConfigFilePath}");
+            Log.LogInfo($"[FPVDrone] Loaded axis mapping — T=Axis{ThrottleAxis.Value}  R=Axis{RollAxis.Value}  P=Axis{PitchAxis.Value}  Y=Axis{YawAxis.Value}  ThrottleRangeMin={ThrottleRangeMin.Value}");
         }
 
         private void BindConfig()
@@ -93,42 +100,44 @@ namespace ValheimFPVDrone
                 "Key to open/close the input monitor and calibration wizard.");
 
             // ── Betaflight-style Rates ──
-            RollRate = Config.Bind("Rates", "RollRate", 0.7f,
-                "Betaflight roll rate (0.0 – 1.0). Higher = faster rotation at full stick.");
-            PitchRate = Config.Bind("Rates", "PitchRate", 0.7f,
-                "Betaflight pitch rate.");
-            YawRate = Config.Bind("Rates", "YawRate", 0.65f,
-                "Betaflight yaw rate.");
-            RollSuperRate = Config.Bind("Rates", "RollSuperRate", 0.75f,
-                "Betaflight roll super rate. Adds sensitivity at stick endpoints.");
-            PitchSuperRate = Config.Bind("Rates", "PitchSuperRate", 0.75f,
-                "Betaflight pitch super rate.");
-            YawSuperRate = Config.Bind("Rates", "YawSuperRate", 0.70f,
-                "Betaflight yaw super rate.");
-            RollRCRate = Config.Bind("Rates", "RollRCRate", 1.0f,
+            RollRate = Config.Bind("Rates", "RollRate", 0.5f,
+                "Roll Rate (0.0–1.0). Boosts rotation speed at full stick deflection. Matches 'Rate' in Betaflight Configurator.");
+            PitchRate = Config.Bind("Rates", "PitchRate", 0.5f,
+                "Pitch Rate (0.0–1.0). Matches 'Rate' in Betaflight Configurator.");
+            YawRate = Config.Bind("Rates", "YawRate", 0.5f,
+                "Yaw Rate (0.0–1.0). Matches 'Rate' in Betaflight Configurator.");
+            RollRCExpo = Config.Bind("Rates", "RollRCExpo", 0.0f,
+                "RC Expo for roll (0.0–1.0). Softens center stick feel without affecting full deflection. Matches 'RC Expo' in Betaflight Configurator.");
+            PitchRCExpo = Config.Bind("Rates", "PitchRCExpo", 0.0f,
+                "RC Expo for pitch (0.0–1.0).");
+            YawRCExpo = Config.Bind("Rates", "YawRCExpo", 0.0f,
+                "RC Expo for yaw (0.0–1.0).");
+            RollRCRate = Config.Bind("Rates", "RollRCRate", 1.7f,
                 "Betaflight roll RC rate (center sensitivity multiplier).");
-            PitchRCRate = Config.Bind("Rates", "PitchRCRate", 1.0f,
+            PitchRCRate = Config.Bind("Rates", "PitchRCRate", 1.7f,
                 "Betaflight pitch RC rate.");
-            YawRCRate = Config.Bind("Rates", "YawRCRate", 1.0f,
+            YawRCRate = Config.Bind("Rates", "YawRCRate", 1.7f,
                 "Betaflight yaw RC rate.");
 
             // ── Physics ──
             Gravity = Config.Bind("Physics", "Gravity", 9.81f,
                 "Gravity acceleration (m/s²). Valheim default ~9.81.");
-            MaxThrust = Config.Bind("Physics", "MaxThrust", 35.0f,
+            MaxThrust = Config.Bind("Physics", "MaxThrust", 75.0f,
                 "Max thrust force in Newtons. Roughly 3.5x weight for a racing quad feel.");
-            Mass = Config.Bind("Physics", "Mass", 0.8f,
+            Mass = Config.Bind("Physics", "Mass", 0.99f,
                 "Drone mass in kg. Typical 5\" racing quad is 0.6–0.9 kg.");
-            DragCoefficient = Config.Bind("Physics", "DragCoefficient", 0.4f,
-                "Linear drag. Higher = more air resistance, lower top speed.");
+            DragCoefficient = Config.Bind("Physics", "DragCoefficient", 0.02f,
+                "Quadratic drag coefficient. Lower = faster top speed and faster fall. 0.02 gives ~120-140 km/h equilibrium speed.");
             AngularDragCoefficient = Config.Bind("Physics", "AngularDragCoefficient", 8.0f,
                 "Angular drag. Higher = snappier stop when releasing sticks.");
-            MotorSpinUpTime = Config.Bind("Physics", "MotorSpinUpTime", 0.05f,
+            MotorSpinUpTime = Config.Bind("Physics", "MotorSpinUpTime", 0.03f,
                 "Time (sec) for motors to reach target RPM. Simulates motor latency.");
+            ObstacleCollision = Config.Bind("Physics", "ObstacleCollision", true,
+                "If true, drone collides with player-built structures. Ground collision is always active.");
 
             // ── Speed ──
-            MaxSpeed = Config.Bind("Speed", "MaxSpeed", 50.0f,
-                "Max drone speed in m/s. ~180 km/h for a fast racing quad.");
+            MaxSpeed = Config.Bind("Speed", "MaxSpeed", 100.0f,
+                "Max drone speed in m/s hard cap. 80 = ~290 km/h. Physics drag determines actual equilibrium speed — this just prevents runaway values.");
             IdleThrottlePercent = Config.Bind("Speed", "IdleThrottlePercent", 5.0f,
                 "Motor idle percentage (0–100). Small value keeps motors spinning at zero throttle.");
 
