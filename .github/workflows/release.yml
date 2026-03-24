@@ -34,7 +34,11 @@ jobs:
 
       - name: Install DepotDownloader
         if: steps.cache-libs.outputs.cache-hit != 'true'
-        run: dotnet tool install -g DepotDownloader
+        run: |
+          curl -sL -o depotdownloader.zip \
+            "https://github.com/SteamRE/DepotDownloader/releases/latest/download/DepotDownloader-linux-x64.zip"
+          unzip -q depotdownloader.zip -d depotdownloader
+          chmod +x depotdownloader/DepotDownloader
 
       - name: Download Valheim Dedicated Server DLLs
         if: steps.cache-libs.outputs.cache-hit != 'true'
@@ -52,7 +56,7 @@ jobs:
           regex:.*UnityEngine\.AudioModule\.dll$
           EOF
 
-          ~/.dotnet/tools/depotdownloader \
+          ./depotdownloader/DepotDownloader \
             -app 896660 \
             -filelist filelist.txt \
             -dir ./valheim-server
