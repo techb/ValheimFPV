@@ -18,3 +18,7 @@ ValheimFPVDrone/libs/
 # OS
 Thumbs.db
 desktop.ini
+
+# Claude Code — AI assistant config, local only
+.claude/
+CLAUDE.md
