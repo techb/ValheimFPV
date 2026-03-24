@@ -32,37 +32,35 @@ jobs:
           path: dep-libs
           key: dep-libs-${{ runner.os }}-${{ steps.date.outputs.month }}
 
-      - name: Install and initialize SteamCMD
+      - name: Install DepotDownloader
         if: steps.cache-libs.outputs.cache-hit != 'true'
-        run: |
-          # Direct tarball install avoids the broken i386 apt package on GitHub runners
-          mkdir -p "$HOME/steamcmd"
-          curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" \
-            | tar zxf - -C "$HOME/steamcmd"
-          # First run lets SteamCMD self-update — required before any app download
-          "$HOME/steamcmd/steamcmd.sh" +quit || true
+        run: dotnet tool install -g DepotDownloader
 
-      - name: Download Valheim Dedicated Server (free, anonymous)
+      - name: Download Valheim Dedicated Server DLLs
         if: steps.cache-libs.outputs.cache-hit != 'true'
         run: |
-          # App 896660 = Valheim Dedicated Server — free, no Steam account required
-          "$HOME/steamcmd/steamcmd.sh" \
-            +force_install_dir ${{ github.workspace }}/valheim-server \
-            +login anonymous \
-            +app_update 896660 \
-            +quit
+          # DepotDownloader fetches only the files we need (~5 MB vs ~1 GB for full server)
+          # App 896660 = Valheim Dedicated Server, free anonymous download
+          cat > filelist.txt << 'EOF'
+          regex:.*assembly_valheim\.dll$
+          regex:.*UnityEngine\.dll$
+          regex:.*UnityEngine\.CoreModule\.dll$
+          regex:.*UnityEngine\.PhysicsModule\.dll$
+          regex:.*UnityEngine\.InputLegacyModule\.dll$
+          regex:.*UnityEngine\.IMGUIModule\.dll$
+          regex:.*UnityEngine\.TextRenderingModule\.dll$
+          regex:.*UnityEngine\.AudioModule\.dll$
+          EOF
+
+          ~/.dotnet/tools/depotdownloader \
+            -app 896660 \
+            -filelist filelist.txt \
+            -dir ./valheim-server
 
           mkdir -p dep-libs
-          MANAGED=${{ github.workspace }}/valheim-server/valheim_server_Data/Managed
-
-          cp "$MANAGED/assembly_valheim.dll"           dep-libs/
-          cp "$MANAGED/UnityEngine.dll"                dep-libs/ 2>/dev/null || true
-          cp "$MANAGED/UnityEngine.CoreModule.dll"     dep-libs/ 2>/dev/null || true
-          cp "$MANAGED/UnityEngine.PhysicsModule.dll"  dep-libs/ 2>/dev/null || true
-          cp "$MANAGED/UnityEngine.InputLegacyModule.dll" dep-libs/ 2>/dev/null || true
-          cp "$MANAGED/UnityEngine.IMGUIModule.dll"    dep-libs/ 2>/dev/null || true
-          cp "$MANAGED/UnityEngine.TextRenderingModule.dll" dep-libs/ 2>/dev/null || true
-          cp "$MANAGED/UnityEngine.AudioModule.dll"    dep-libs/ 2>/dev/null || true
+          find ./valheim-server -name "*.dll" -exec cp {} dep-libs/ \;
+          echo "Downloaded DLLs:"
+          ls dep-libs/
 
       - name: Download BepInEx 5.x (latest)
         if: steps.cache-libs.outputs.cache-hit != 'true'
