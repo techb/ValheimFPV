@@ -4,6 +4,8 @@
 
 Fly around the Valheim world as an FPV racing drone in **acro/rate mode**. Plug in your RadioMaster (or any USB RC transmitter) and rip through the Black Forest, buzz Viking villages, and dive the mountains — all with realistic drone physics.
 
+![Build](https://github.com/techb/ValheimFPV/actions/workflows/release.yml/badge.svg?branch=release)
+![Release](https://img.shields.io/github/v/release/techb/ValheimFPV?include_prereleases)
 ![Valheim FPV](https://img.shields.io/badge/Valheim-FPV%20Drone-blue)
 ![BepInEx](https://img.shields.io/badge/BepInEx-5.4.x-green)
 ![WIP](https://img.shields.io/badge/status-work%20in%20progress-orange)
@@ -12,18 +14,19 @@ Fly around the Valheim world as an FPV racing drone in **acro/rate mode**. Plug 
 
 ## Features
 
-- **True acro mode flight** — stick inputs command angular velocity, not angle. No auto-leveling. Release the sticks and the drone holds its current attitude, just like a real quad.
-- **Betaflight rate curves** — RC Rate, Rate, and RC Expo per axis, matching Betaflight Configurator exactly. Copy your rates directly from BF Configurator.
+- **Acro mode flight** — stick inputs command angular velocity, not angle. No auto-leveling. Release the sticks and the drone holds its current attitude, just like a real quad.
+- **Betaflight rate curves** — RC Rate, Rate, and RC Expo per axis, matching Betaflight Configurator. Copy your rates directly from BF Configurator.
 - **RadioMaster & USB controller support** — any RC transmitter that exposes a USB HID joystick. Reads axes via WinMM directly, bypassing Unity's Input Manager limitations. Configurable axis mapping and inversion.
 - **Axis calibration wizard** — press F7 to open the live input monitor. Move each stick on command and the wizard auto-detects axis mapping and saves immediately. No manual config editing needed.
-- **Realistic physics** — thrust along local UP, gravity, quadratic aerodynamic drag, motor spin-up delay, terrain ground collision.
-- **Solid obstacle collision** — collides with rocks, boulders, tree trunks, and player-built structures. Foliage and canopy excluded. Toggle-able in config.
+- **_Realistic_ physics** — thrust along local UP, gravity, quadratic aerodynamic drag, motor spin-up delay, terrain ground collision. Note that this isn't as good as dedicated sims like Uncrashed or Liftoff.
+- **Solid obstacle collision** — collides with rocks, boulders, tree trunks, and player-built structures. Foliage and canopy excluded. Toggle-able in config. Still a work in progress trying to figure out Valheims render layers.
 - **Full-quality FPV rendering** — the drone view uses the game's existing camera, preserving all post-processing, fog, grass, particles, and ambient occlusion.
 - **Map reveal** — flying the drone reveals the fog of war on the minimap, same as the player walking.
 - **Player ghosting** — while flying, the player character is hidden, invincible, and clips through everything. World chunks stream under the drone.
 - **FPV camera** — configurable uptilt angle and FOV.
 - **OSD-style HUD** — speed, altitude, heading, throttle bar, stick position indicators, motor output, and max rates.
-- **Keyboard fallback** — WASD + QE + Space/Shift for flying without a controller.
+- **Keyboard fallback** — WASD + QE + Space/Shift for flying without a controller. Not recommended.
+- **Gamepad Suport** — PS4/5, XBox controllers should work. Tested with PS5 controller. Will still need to do the calibration F7. Not recommended.
 
 ---
 
@@ -59,6 +62,14 @@ If your radio uses EdgeTX/OpenTX and axes aren't working:
 
 ## Controls
 
+### Global
+| Key            | Function                                      |
+|----------------|-----------------------------------------------|
+| F1             | Bring up BepInEx Mod config (Requires [Configuration Manager](https://valheim.thunderstore.io/package/Azumatt/Official_BepInEx_ConfigurationManager/)) |
+| F7             | Open input monitor / calibration wizard       |
+| F8             | Toggle drone on/off                           |
+| F9             | Reset drone to player position                |
+
 ### Controller (RadioMaster / RC Transmitter)
 | Stick          | Function                     |
 |----------------|------------------------------|
@@ -75,9 +86,7 @@ If your radio uses EdgeTX/OpenTX and axes aren't working:
 | Q / E          | Yaw left / right                      |
 | Space          | Increase throttle                     |
 | Left Shift     | Decrease throttle                     |
-| F7             | Open input monitor / calibration wizard |
-| F8             | Toggle drone on/off                   |
-| F9             | Reset drone to player position        |
+
 
 ---
 
@@ -86,7 +95,7 @@ If your radio uses EdgeTX/OpenTX and axes aren't working:
 All settings are in `BepInEx/config/com.fpvdrone.valheim.cfg`. Edit live with [Configuration Manager](https://valheim.thunderstore.io/package/Azumatt/Official_BepInEx_ConfigurationManager/) (press F1 in-game).
 
 ### Rates (Betaflight-style)
-These match the **BETAFLIGHT** rate type in Betaflight Configurator exactly. You can copy your rates from BF Configurator directly.
+These match the **BETAFLIGHT** rate type in Betaflight Configurator. You can copy your rates from BF Configurator directly.
 
 | Setting        | Default | Description                                               |
 |----------------|---------|-----------------------------------------------------------|
@@ -184,13 +193,14 @@ For access to private members, use [AssemblyPublicizer](https://github.com/Cabba
 ## How It Works
 
 ### Acro Mode Physics
-In acro (rate) mode, the drone has no stabilization. Your stick inputs set the **angular velocity** — how fast the drone rotates — not the angle:
+In acro mode, the drone has no stabilization. Your stick inputs set the **angular velocity** — how fast the drone rotates — not the angle:
 
 - **Stick at center** → drone holds its current orientation (no auto-level)
 - **Stick deflected** → drone rotates at a rate determined by Betaflight rate curves
 - **Throttle** → thrust along the drone's local UP axis
 - **To move forward**: pitch the nose down so thrust has a forward component
 - **To hover**: keep the drone level and throttle at hover power
+- **Watch this**: Bardwell is a much better teacher, [watch his playlist on how to fly](https://www.youtube.com/playlist?list=PLwoDb7WF6c8lCKhQOTy-Vb9LfW0VAIrTP).
 
 ### Betaflight Rate Formula
 The mod implements the **BETAFLIGHT** rate type, matching Betaflight Configurator exactly:
@@ -258,13 +268,32 @@ Real motors don't instantly change RPM. The `MotorSpinUpTime` parameter adds a s
 - The mod uses raycasting on the `terrain` layer for ground detection. Very complex terrain mods may cause issues.
 
 **Getting stuck in trees:**
-- Tree trunks are solid (`static_solid` layer). Tree foliage/canopy is excluded from collision intentionally. If collision is off, set `ObstacleCollision = true` in config.
+- Tree trunks are solid (`static_solid` layer). Tree foliage/canopy is excluded from collision intentionally. If collision is off, set `ObstacleCollision = true` in config. Collisions are an ongoing thing, this option can be hit and miss for now.
 
 **Player dies when exiting drone mode:**
-- Fixed in current version — fall damage tracking is reset when exiting. If it still occurs, check the BepInEx log for `m_maxAirAltitude field not found` which would indicate a Valheim version mismatch.
+- Still having this issue sometimes but is better — fall damage tracking is reset when exiting. If it still occurs, check the BepInEx log for `m_maxAirAltitude field not found` which would indicate a Valheim version mismatch.
 
 **Game camera doesn't restore after exiting:**
 - Press F8 twice to toggle drone off and on, which resets the camera override.
+
+---
+
+## Contributing
+
+Contributions are welcome! Please use the following branch workflow:
+
+```
+develop  →  master  →  release
+```
+
+- Branch off **`develop`** for new features or bug fixes
+- Open a PR back into **`develop`** — this is where active testing happens
+- `develop` is merged into **`master`** for broader testing
+- `master` is merged into **`release`** when ready for production (triggers the automated build and GitHub Release)
+
+**AI assistance is welcome** — but please keep AI-generated config files local. Do not commit `.claude/`, `CLAUDE.md`, `.cursor/`, `.copilot/`, or similar AI tooling files. They are already listed in `.gitignore`.
+
+**Bugs and feature requests:** please use [GitHub Issues](https://github.com/techb/ValheimFPV/issues).
 
 ---
 
