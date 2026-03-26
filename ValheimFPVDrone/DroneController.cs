@@ -15,6 +15,7 @@ namespace ValheimFPVDrone
         public bool IsFlying { get; private set; } = false;
 
         private GameObject _droneObject;
+        private GameObject _visualModel;
         private DronePhysics _physics;
         private DroneHUD _hud;
 
@@ -33,6 +34,9 @@ namespace ValheimFPVDrone
         private Renderer[] _playerRenderers;
         private CharacterController _playerCC;
         private Collider[] _playerColliders;
+
+        // Camera view mode
+        private bool _thirdPerson = false;
 
         // Fixed timestep accumulator for physics
         private float _physicsAccumulator = 0f;
@@ -56,6 +60,13 @@ namespace ValheimFPVDrone
             if (IsFlying && Input.GetKeyDown(Plugin.ResetDroneKey.Value))
             {
                 ResetDronePosition();
+            }
+
+            // Toggle camera view
+            if (IsFlying && Input.GetKeyDown(Plugin.ToggleCameraViewKey.Value))
+            {
+                _thirdPerson = !_thirdPerson;
+                Plugin.Log.LogInfo($"Camera: {(_thirdPerson ? "Third Person" : "FPV")}");
             }
 
             if (!IsFlying) return;
@@ -122,6 +133,9 @@ namespace ValheimFPVDrone
             // Add physics component
             _physics = _droneObject.AddComponent<DronePhysics>();
 
+            // Attach visual model
+            _visualModel = DroneModel.Attach(_droneObject, Plugin.DroneModel.Value);
+
             // Ghost the player: invisible, invincible, no collision
             GhostPlayer(player);
 
@@ -140,7 +154,8 @@ namespace ValheimFPVDrone
             // Disable game camera, enable FPV
             SwitchToFPVCamera();
 
-            // Disable player input
+            // Start in FPV mode
+            _thirdPerson = false;
             IsFlying = true;
 
             // Freeze the game's time scale? No — we want the world to keep running.
@@ -155,12 +170,14 @@ namespace ValheimFPVDrone
 
             IsFlying = false;
 
-            // Restore camera
+            // Restore camera (including culling mask for drone model layer)
+            DroneModel.SetFPVCameraVisibility(_fpvCamera, false);
             RestoreGameCamera();
 
             // Destroy drone
             if (_droneObject != null)
             {
+                DroneModel.Detach(ref _visualModel);
                 Destroy(_droneObject);
                 _droneObject = null;
                 _physics = null;
@@ -172,6 +189,7 @@ namespace ValheimFPVDrone
             // Hide HUD
             if (_hud != null)
             {
+                _hud.SetDronePhysics(null);
                 _hud.enabled = false;
             }
 
@@ -208,12 +226,33 @@ namespace ValheimFPVDrone
         {
             if (_fpvCamera == null || _droneObject == null) return;
 
-            float tilt = Plugin.CameraTiltAngle.Value;
-            _fpvCamera.transform.position = _droneObject.transform.position;
-            _fpvCamera.transform.rotation = _droneObject.transform.rotation *
-                Quaternion.Euler(-tilt, 0f, 0f);
+            Transform drone = _droneObject.transform;
+
+            if (_thirdPerson)
+            {
+                // Chase camera: offset in the drone's local space so it follows rolls and flips
+                float dist = Plugin.ThirdPersonDistance.Value;
+                float height = Plugin.ThirdPersonHeight.Value;
+                Vector3 offset = drone.rotation * new Vector3(0f, height, -dist);
+                _fpvCamera.transform.position = drone.position + offset;
+                _fpvCamera.transform.rotation = Quaternion.LookRotation(
+                    drone.position - _fpvCamera.transform.position, drone.up);
+            }
+            else
+            {
+                // FPV: camera at drone position with tilt
+                float tilt = Plugin.CameraTiltAngle.Value;
+                _fpvCamera.transform.position = drone.position;
+                _fpvCamera.transform.rotation = drone.rotation * Quaternion.Euler(-tilt, 0f, 0f);
+            }
+
             _fpvCamera.fieldOfView   = Plugin.CameraFOV.Value;
             _fpvCamera.nearClipPlane = 0.05f;
+
+            // In FPV mode, optionally hide the drone model from the local camera
+            // so it doesn't block the view. Other players still see it.
+            bool hideModel = !_thirdPerson && Plugin.HideModelInFPV.Value;
+            DroneModel.SetFPVCameraVisibility(_fpvCamera, hideModel);
         }
 
         // Cached reflection info for Minimap.Explore (not exposed in publicized DLL)
