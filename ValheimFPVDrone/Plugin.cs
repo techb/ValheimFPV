@@ -66,6 +66,15 @@ namespace ValheimFPVDrone
         public static ConfigEntry<bool> ThrottleCenterZero;
         public static ConfigEntry<float> ThrottleRangeMin;
 
+        // ── Visual ──
+        public static ConfigEntry<DroneModelType> DroneModel;
+        public static ConfigEntry<bool> HideModelInFPV;
+
+        // ── Camera view ──
+        public static ConfigEntry<KeyCode> ToggleCameraViewKey;
+        public static ConfigEntry<float> ThirdPersonDistance;
+        public static ConfigEntry<float> ThirdPersonHeight;
+
         // ── Rendering ──
         public static ConfigEntry<bool> ShowHUD;
         public static ConfigEntry<bool> ShowCrosshair;
@@ -181,6 +190,21 @@ namespace ValheimFPVDrone
                 "Raw throttle floor (-1 = full-range axis, 0 = half-range axis). " +
                 "Set to 0 if your throttle reads ~0.5 at idle; set to -1 if it reads ~0.0. " +
                 "The calibration wizard auto-detects this.");
+
+            // ── Visual ──
+            DroneModel = Config.Bind("Visual", "DroneModel", DroneModelType.Karve,
+                "Visual model attached to the drone. None = invisible, Karve = ship, " +
+                "Deathsquito, Deer, Dragon, Player = your character.");
+            HideModelInFPV = Config.Bind("Visual", "HideModelInFPV", true,
+                "Hide the drone model from your FPV camera. The model remains visible to other players in multiplayer.");
+
+            // ── Camera view ──
+            ToggleCameraViewKey = Config.Bind("Camera", "ToggleCameraViewKey", KeyCode.V,
+                "Key to toggle between first-person (FPV) and third-person chase camera while flying.");
+            ThirdPersonDistance = Config.Bind("Camera", "ThirdPersonDistance", 5.0f,
+                "Third-person camera distance behind the drone (meters).");
+            ThirdPersonHeight = Config.Bind("Camera", "ThirdPersonHeight", 2.0f,
+                "Third-person camera height above the drone (meters).");
 
             // ── HUD ──
             ShowHUD = Config.Bind("HUD", "ShowHUD", true,

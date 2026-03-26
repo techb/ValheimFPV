@@ -32,6 +32,8 @@ This is a fun little side project and somethign I've wanted for Valheim since I 
 - **FPV rendering** — the drone view uses the game's existing camera, preserving all post-processing, fog, grass, particles, and ambient occlusion.
 - **Map reveal** — flying the drone reveals the fog of war on the minimap, same as the player walking.
 - **Player ghosting** — while flying, the player character is hidden, invincible, and clips through everything. World chunks stream under the drone.
+- **Visual drone models** — attach a Valheim model to the drone: Karve, Deathsquito, Deer, Dragon, your Player character, or None (invisible). Other players see the model in multiplayer; optionally hidden from your own FPV camera.
+- **Third-person chase camera** — press V to toggle between FPV and a third-person camera that follows the drone through rolls, flips, and all maneuvers. Configurable distance and height.
 - **FPV camera** — configurable uptilt angle and FOV.
 - **OSD-ish HUD** — speed, altitude, heading, throttle bar, stick position indicators, motor output, and max rates.
 - **Gamepad Support** — PS4/5, XBox controllers should work. Tested with PS5 controller. Will still need to do the calibration F7. **Not recommended.**
@@ -87,6 +89,7 @@ If your radio uses EdgeTX/OpenTX and axes aren't working:
 | F7             | Open input monitor / calibration wizard       |
 | F8             | Toggle drone on/off                           |
 | F9             | Reset drone to player position                |
+| V              | Toggle FPV / third-person camera              |
 
 ### Controller (RadioMaster / RC Transmitter)
 | Stick          | Function                     |
@@ -149,6 +152,15 @@ These match the **BETAFLIGHT** rate type in Betaflight Configurator. You can cop
 |----------------------|---------|--------------------------------------------|
 | CameraTiltAngle      | 30.0    | Degrees of camera uptilt. 25–45 typical.   |
 | CameraFOV            | 110.0   | Field of view. 100–140 for FPV.            |
+| ToggleCameraViewKey  | V       | Key to toggle FPV / third-person camera.   |
+| ThirdPersonDistance   | 5.0     | Chase camera distance behind drone (m).    |
+| ThirdPersonHeight    | 2.0     | Chase camera height above drone (m).       |
+
+### Visual
+| Setting              | Default       | Description                                                  |
+|----------------------|---------------|--------------------------------------------------------------|
+| DroneModel           | Karve         | Visual model: None, Karve, Deathsquito, Deer, Dragon, Player. |
+| HideModelInFPV       | true          | Hide the model from your FPV camera. Still visible to other players in multiplayer. |
 
 ### Controller Mapping
 | Setting              | Default | Description                                                   |
