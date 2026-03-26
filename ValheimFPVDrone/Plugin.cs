@@ -13,7 +13,7 @@ namespace ValheimFPVDrone
     {
         public const string PluginGUID = "com.fpvdrone.valheim";
         public const string PluginName = "Valheim FPV Drone";
-        public const string PluginVersion = "0.3.3";
+        public const string PluginVersion = "0.3.4";
 
         public static ManualLogSource Log;
         public static Plugin Instance;

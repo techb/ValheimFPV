@@ -4,6 +4,8 @@ All notable changes to the Valheim FPV Drone Mod will be documented in this file
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-03-26
+
 ### Added
 - **Visual drone models** — attach a Valheim model to the drone so other players can see it in multiplayer. Choose from: Karve, Deathsquito, Deer, Dragon, Player (your character), or None (invisible). Configurable via the `DroneModel` setting in the Visual section.
 - **Hide model in FPV** — new `HideModelInFPV` config option (default: true). Uses Unity layer 31 to exclude the drone model from the local FPV camera's culling mask while keeping it visible to other players' cameras.
