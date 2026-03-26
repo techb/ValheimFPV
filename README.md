@@ -1,14 +1,22 @@
 # Valheim FPV Drone Mod
 
-> **Work In Progress** — Expect bugs, crashes, and missing features. Report issues on the GitHub repo.
+![Banner](img/banner.jpg)
 
-Fly around the Valheim world as an FPV racing drone in **acro/rate mode**. Plug in your RadioMaster (or any USB RC transmitter) and rip through the Black Forest, buzz Viking villages, and dive the mountains — all with realistic drone physics.
+> **¡Work In Progress!** — Expect bugs, crashes, and missing features. Report issues on the GitHub repo.
+
+Fly around the Valheim world as an FPV racing drone in **acro mode**. Plug in your RadioMaster (or any USB RC transmitter) and rip through the Black Forest, buzz Viking villages, and dive the mountains. Great for building your own fpv parks in Valhalla.
+
+This is a fun little side project and somethign I've wanted for Valheim since I started playing it when it first hit early access. This mod was assisted by Claude.
 
 ![Build](https://github.com/techb/ValheimFPV/actions/workflows/release.yml/badge.svg?branch=release)
 ![Release](https://img.shields.io/github/v/release/techb/ValheimFPV?include_prereleases)
 ![Valheim FPV](https://img.shields.io/badge/Valheim-FPV%20Drone-blue)
 ![BepInEx](https://img.shields.io/badge/BepInEx-5.4.x-green)
 ![WIP](https://img.shields.io/badge/status-work%20in%20progress-orange)
+
+[![Nexus Mods](https://img.shields.io/badge/Nexus%20Mods-Download-orange?logo=nexusmods)](https://www.nexusmods.com/valheim/mods/3284)
+
+[![YouTube](https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube)](https://youtu.be/iloQp4RteX0?si=cX2529BhasFYBUHZ)
 
 ---
 
@@ -18,15 +26,23 @@ Fly around the Valheim world as an FPV racing drone in **acro/rate mode**. Plug 
 - **Betaflight rate curves** — RC Rate, Rate, and RC Expo per axis, matching Betaflight Configurator. Copy your rates directly from BF Configurator.
 - **RadioMaster & USB controller support** — any RC transmitter that exposes a USB HID joystick. Reads axes via WinMM directly, bypassing Unity's Input Manager limitations. Configurable axis mapping and inversion.
 - **Axis calibration wizard** — press F7 to open the live input monitor. Move each stick on command and the wizard auto-detects axis mapping and saves immediately. No manual config editing needed.
-- **_Realistic_ physics** — thrust along local UP, gravity, quadratic aerodynamic drag, motor spin-up delay, terrain ground collision. Note that this isn't as good as dedicated sims like Uncrashed or Liftoff.
-- **Solid obstacle collision** — collides with rocks, boulders, tree trunks, and player-built structures. Foliage and canopy excluded. Toggle-able in config. Still a work in progress trying to figure out Valheims render layers.
-- **Full-quality FPV rendering** — the drone view uses the game's existing camera, preserving all post-processing, fog, grass, particles, and ambient occlusion.
+- **_Realistic_\* physics** — thrust along local UP, gravity, quadratic aerodynamic drag, motor spin-up delay, terrain ground collision. *Note that this isn't as good as dedicated sims like Uncrashed or Liftoff.
+- **Obstacle collision** — collides with rocks, boulders, tree trunks, and player-built structures. Foliage and canopy excluded. Toggle-able in config. Still a work in progress trying to figure out Valheims render layers.
+- **FPV rendering** — the drone view uses the game's existing camera, preserving all post-processing, fog, grass, particles, and ambient occlusion.
 - **Map reveal** — flying the drone reveals the fog of war on the minimap, same as the player walking.
 - **Player ghosting** — while flying, the player character is hidden, invincible, and clips through everything. World chunks stream under the drone.
 - **FPV camera** — configurable uptilt angle and FOV.
-- **OSD-style HUD** — speed, altitude, heading, throttle bar, stick position indicators, motor output, and max rates.
-- **Keyboard fallback** — WASD + QE + Space/Shift for flying without a controller. Not recommended.
-- **Gamepad Suport** — PS4/5, XBox controllers should work. Tested with PS5 controller. Will still need to do the calibration F7. Not recommended.
+- **OSD-ish HUD** — speed, altitude, heading, throttle bar, stick position indicators, motor output, and max rates.
+- **Gamepad Support** — PS4/5, XBox controllers should work. Tested with PS5 controller. Will still need to do the calibration F7. **Not recommended.**
+- **Keyboard fallback** — WASD + QE + Space/Shift for flying without a controller. **HIGHLY Not recommended.**
+
+---
+
+## Screenshots
+
+| Calibration Wizard (F7) | FPV Flight View (F8) |
+|---|---|
+| ![Calibration Wizard](img/Valheim%20Screenshot%202026.03.24%20-%2022.48.03.78.png) | ![FPV Flight](img/Valheim%20Screenshot%202026.03.24%20-%2022.48.44.11.png) |
 
 ---
 
@@ -47,6 +63,7 @@ Fly around the Valheim world as an FPV racing drone in **acro/rate mode**. Plug 
 3. **Verify in Windows**: Open `joy.cpl` (Set up USB game controllers). You should see your radio listed and all axes responding.
 4. **Launch Valheim** — the mod auto-detects the controller.
 5. **Press F7** in-game to open the input monitor and run the calibration wizard.
+- This has been working for me with a TX16s and a PS5 controller directly plugged in for both. I did try a [squidstick](https://pyrodrone.com/products/squid-stick-wireless-usb-simulator-dongle-for-elrs-2-4ghz-radios-modules-pink) for the the radio but had issues with yaw. PS5 controller tested was plugged in not BT (though I don't see it being an issue if wireless).
 
 #### EdgeTX USB Joystick Configuration
 If your radio uses EdgeTX/OpenTX and axes aren't working:
@@ -78,7 +95,7 @@ If your radio uses EdgeTX/OpenTX and axes aren't working:
 | Left Stick Y   | Throttle                     |
 | Left Stick X   | Yaw (rudder)                 |
 
-### Keyboard Fallback
+### Keyboard Fallback NOT RECOMMENDED
 | Key            | Function                              |
 |----------------|---------------------------------------|
 | W / S          | Pitch forward / back                  |
