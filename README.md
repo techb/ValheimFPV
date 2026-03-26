@@ -9,12 +9,13 @@ Fly around the Valheim world as an FPV racing drone in **acro mode**. Plug in yo
 This is a fun little side project and somethign I've wanted for Valheim since I started playing it when it first hit early access. This mod was assisted by Claude.
 
 ![Build](https://github.com/techb/ValheimFPV/actions/workflows/release.yml/badge.svg?branch=release)
+
 ![Release](https://img.shields.io/github/v/release/techb/ValheimFPV?include_prereleases)
-![Valheim FPV](https://img.shields.io/badge/Valheim-FPV%20Drone-blue)
-![BepInEx](https://img.shields.io/badge/BepInEx-5.4.x-green)
+
 ![WIP](https://img.shields.io/badge/status-work%20in%20progress-orange)
 
 [![Nexus Mods](https://img.shields.io/badge/Nexus%20Mods-Download-orange?logo=nexusmods)](https://www.nexusmods.com/valheim/mods/3284)
+![BepInEx](https://img.shields.io/badge/BepInEx-5.4.x-green)
 
 [![YouTube](https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube)](https://youtu.be/iloQp4RteX0?si=cX2529BhasFYBUHZ)
 
