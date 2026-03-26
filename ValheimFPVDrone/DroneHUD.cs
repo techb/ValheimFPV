@@ -70,7 +70,9 @@ namespace ValheimFPVDrone
 
         private void OnGUI()
         {
-            if (!Plugin.ShowHUD.Value || _physics == null) return;
+            if (_physics == null) return;
+            if (DroneController.Instance == null || !DroneController.Instance.IsFlying) return;
+            if (!Plugin.ShowHUD.Value) return;
 
             InitStyles();
 
