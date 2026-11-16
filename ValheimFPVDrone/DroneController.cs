@@ -118,7 +118,11 @@ namespace ValheimFPVDrone
                 _warnShown = true;
                 if (MessageHud.instance != null)
                     MessageHud.instance.ShowMessage(MessageHud.MessageType.Center,
-                        $"FPV Drone v{Plugin.PluginVersion} — Work In Progress. Expect bugs!");
+                    $"FPV Drone v{Plugin.PluginVersion} — Work In Progress. Expect bugs!",
+                    0,
+                    null,
+                    false,
+                    true);
             }
 
             // Save player state
